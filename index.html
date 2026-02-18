@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIQdigital API Portal - Complete</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        #root { min-height: 100vh; }
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: rgba(13, 58, 74, 0.3); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        const { Home, Key, FileCode, BarChart3, LogOut, Copy, CheckCircle, AlertCircle } = lucide;
+
+        const ALL_APIS = [
+          { slug: 'esiid-lookup', title: 'ESIID Lookup', subtitle: 'ERCOT address validation and ESIID matching' },
+          { slug: 'bill-reader', title: 'Bill Reader', subtitle: 'AI-powered utility bill data extraction' },
+          { slug: 'smt-consent-access', title: 'SMT Consent & Access', subtitle: 'Smart Meter Texas consent and interval data access' },
+          { slug: 'switch-velocity', title: 'Switch Velocity', subtitle: 'Historical switching insights at the ESID level' },
+          { slug: 'utility-usage-data', title: 'Utility Usage Data Access (TDSP)', subtitle: 'Historical utility usage data from ERCOT TDSPs' },
+          { slug: 'myaccount-reader', title: 'MyAccount Reader', subtitle: 'Permission-based access to utility account data' },
+          { slug: 'market-rate-data', title: 'Market Rate Data', subtitle: 'Competitive energy pricing data across deregulated markets' },
+          { slug: 'home-usage-estimator', title: 'Home Usage Estimator', subtitle: 'AI-based electricity usage estimation for ERCOT' },
+          { slug: 'load-profile-matcher', title: 'Load Profile Matcher', subtitle: 'AI-based usage-driven energy plan cost calculation' }
+        ];
+
+        const API_DOCS = [
+          {
+            slug: 'esiid-lookup',
+            title: 'ESIID Lookup',
+            subtitle: 'ERCOT address validation and ESIID matching',
+            description: 'The ESIID Lookup API validates service addresses and resolves them to the correct Electric Service Identifier (ESIID) across the ERCOT market. It uses type-ahead search and fuzzy matching to handle incomplete, misspelled, or non-standard address input at the point of entry.',
+            whySubscribe: [
+              'Reduce enrollment errors by validating addresses before submission',
+              'Prevent failed sign-ups by resolving the correct ESIID in real time',
+              'Improve data quality across enrollment, quoting, and CRM workflows'
+            ],
+            exampleRequest: `curl -X POST https://api.eiqdigital.com/v1/esiid/lookup \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "address": "123 Main Street",
+    "city": "Austin",
+    "state": "TX",
+    "zip": "78701"
+  }'`,
+            exampleResponse: {
+              success: true,
+              esiid: "10471353804424464",
+              address: { street: "123 Main St", city: "Austin", state: "TX", zip: "78701" },
+              tdu: "Oncor Electric Delivery",
+              currentREP: "TXU Energy",
+              meterType: "Smart Meter",
+              switchEligible: true
+            }
+          },
+          {
+            slug: 'bill-reader',
+            title: 'Bill Reader',
+            subtitle: 'AI-powered utility bill data extraction',
+            description: 'The Bill Reader API extracts key billing information from utility bill images or PDFs using AI and computer vision. It captures data such as service address, ESIID, meter number, usage, and billing details from customer-uploaded documents.\n\nThe API supports both ERCOT and non-ERCOT utilities and is designed for fast, reliable data capture during onboarding and internal workflows.',
+            whySubscribe: [
+              'Eliminate manual data entry by extracting billing data directly from documents',
+              'Speed up onboarding with instant bill parsing from photos or PDFs',
+              'Improve data accuracy across enrollment, servicing, and operations'
+            ],
+            exampleRequest: `curl -X POST https://api.eiqdigital.com/v1/bill/parse \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: multipart/form-data" \\
+  -F "file=@utility_bill.pdf"`,
+            exampleResponse: {
+              success: true,
+              billData: {
+                accountNumber: "9876543210",
+                serviceAddress: { street: "456 Oak Avenue", city: "Houston", state: "TX", zip: "77002" },
+                esiid: "10471353804424465",
+                meterNumber: "12345678",
+                billingPeriod: { start: "2024-12-01", end: "2024-12-31" },
+                usage: { kwh: 1250, unit: "kWh" },
+                charges: { energyCharge: 112.50, deliveryCharge: 42.75, taxes: 8.45, total: 163.70 },
+                utility: "CenterPoint Energy"
+              },
+              confidence: 0.98
+            }
+          },
+          {
+            slug: 'smt-consent-access',
+            title: 'SMT Consent & Access',
+            subtitle: 'Smart Meter Texas consent and interval data access',
+            description: 'The SMT Consent & Access offering consists of two connected APIs: one for capturing customer authorization and one for accessing Smart Meter Texas (SMT) interval usage data once consent is granted.\n\nTogether, they provide a seamless flow from UI-based consent capture to near real-time retrieval of SMT electricity usage data, supporting point-of-sale and digital workflows across the ERCOT market.',
+            whySubscribe: [
+              'Capture customer consent through a simple, device-agnostic authorization API',
+              'Access SMT interval usage data via a separate API once consent is completed',
+              'Use real usage data at point of sale for qualification, pricing, and analysis'
+            ],
+            exampleRequest: `curl -X POST https://api.eiqdigital.com/v1/smt/consent \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "esiid": "10471353804424464",
+    "customerName": "John Doe",
+    "email": "john.doe@example.com"
+  }'`,
+            exampleResponse: {
+              success: true,
+              consentId: "consent_abc123xyz",
+              status: "pending",
+              authorizationUrl: "https://smt.eiqdigital.com/auth/consent_abc123xyz",
+              expiresAt: "2025-02-20T18:30:00Z"
+            }
+          },
+          {
+            slug: 'switch-velocity',
+            title: 'Switch Velocity',
+            subtitle: 'Historical switching insights at the ESID level',
+            description: 'The Switch Velocity API provides visibility into enrollment, switch, and churn activity across the ERCOT market, tied to specific Electric Service Identifiers (ESIDs). It surfaces events such as enrollments, drops, and maintenance requests to help understand switching behavior over time.',
+            whySubscribe: [
+              'Detect fraud by setting risk thresholds for excessive switching activity',
+              'Engage customers at the right time by understanding their most recent switch date',
+              'Enable machine learning models for predicting customer switching behavior'
+            ],
+            exampleRequest: `curl -X GET https://api.eiqdigital.com/v1/switch-velocity/10471353804424464 \\
+  -H "Authorization: Bearer YOUR_API_KEY"`,
+            exampleResponse: {
+              success: true,
+              esiid: "10471353804424464",
+              switchHistory: [
+                { eventType: "enrollment", rep: "TXU Energy", eventDate: "2024-08-15", status: "completed" },
+                { eventType: "switch", rep: "Reliant Energy", eventDate: "2023-11-20", status: "completed" }
+              ],
+              switchCount12Months: 2,
+              lastSwitchDate: "2024-08-15",
+              riskScore: "low"
+            }
+          },
+          {
+            slug: 'utility-usage-data',
+            title: 'Utility Usage Data Access (TDSP)',
+            subtitle: 'Historical utility usage data from ERCOT TDSPs',
+            description: 'The Utility Usage Data Access API provides near real-time access to up to 12 months of historical electricity usage directly from ERCOT Transmission and Distribution Service Providers (TDSPs). Smart Meter Texas (SMT) access is not required.\n\nDesigned for residential and small commercial use cases, the API retrieves verified historical usage data to support qualification, analysis, and plan evaluation workflows across ERCOT.',
+            whySubscribe: [
+              'Access historical usage data directly from TDSPs without SMT dependency',
+              'Qualify customers faster using verified 12-month consumption history',
+              'Reduce manual processes by automating historical usage retrieval'
+            ],
+            exampleRequest: `curl -X GET https://api.eiqdigital.com/v1/utility-usage/10471353804424464 \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json"`,
+            exampleResponse: {
+              success: true,
+              esiid: "10471353804424464",
+              tdsp: "Oncor Electric Delivery",
+              usageData: [
+                { month: "2024-12", kwh: 1250, billingDays: 31 },
+                { month: "2024-11", kwh: 980, billingDays: 30 },
+                { month: "2024-10", kwh: 1100, billingDays: 31 }
+              ],
+              totalKwh12Months: 13500,
+              averageMonthlyKwh: 1125
+            }
+          },
+          {
+            slug: 'myaccount-reader',
+            title: 'MyAccount Reader',
+            subtitle: 'Permission-based access to utility account data',
+            description: 'The MyAccount Reader API provides automated, permission-based access to customer utility account data, including usage history, billing activity, and contract details. It supports both deregulated and regulated utilities across ERCOT and non-ERCOT markets.\n\nWith coverage spanning over 90% of residential customers in Texas and expanding nationally, the API retrieves verified, account-level data directly from utility MyAccount portals with customer authorization.',
+            whySubscribe: [
+              'Access verified account data including usage, billing, and contract details',
+              'Support ERCOT and non-ERCOT markets through a single permission-based integration',
+              'Maintain ongoing visibility into customer account status over time'
+            ],
+            exampleRequest: `curl -X POST https://api.eiqdigital.com/v1/myaccount/authorize \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "utility": "CenterPoint Energy",
+    "username": "customer@example.com",
+    "authToken": "temp_auth_token_xyz"
+  }'`,
+            exampleResponse: {
+              success: true,
+              accountId: "myacct_9876543210",
+              utility: "CenterPoint Energy",
+              accountData: {
+                accountNumber: "9876543210",
+                customerName: "Jane Smith",
+                serviceAddress: "456 Oak Ave, Houston, TX 77002",
+                currentBalance: 163.70,
+                dueDate: "2025-03-01",
+                contractEndDate: "2025-08-15",
+                averageMonthlyUsage: 1125
+              },
+              dataRefreshedAt: "2025-02-17T14:30:00Z"
+            }
+          },
+          {
+            slug: 'market-rate-data',
+            title: 'Market Rate Data',
+            subtitle: 'Competitive energy pricing data across deregulated markets',
+            description: 'The Market Rate Data API provides up-to-date pricing and plan information across Texas and other deregulated energy markets. It aggregates residential energy offers from government comparison sites, digital brokers, and major Retail Energy Providers (REPs), with data refreshed multiple times per day.\n\nThe API supports both ERCOT and non-ERCOT markets and delivers a consistent view of competitive pricing data for monitoring market movement and plan positioning.',
+            whySubscribe: [
+              'Access competitive pricing data across ERCOT and other deregulated markets',
+              'Monitor plan rates and structures with frequent, automated updates',
+              'Maintain visibility into market pricing trends from a single data source'
+            ],
+            exampleRequest: `curl -X GET https://api.eiqdigital.com/v1/market-rates?zip=77002&usage=1000 \\
+  -H "Authorization: Bearer YOUR_API_KEY"`,
+            exampleResponse: {
+              success: true,
+              zipCode: "77002",
+              tdsp: "CenterPoint Energy",
+              plans: [
+                {
+                  planName: "Energy Saver 12",
+                  rep: "Reliant Energy",
+                  termMonths: 12,
+                  rateType: "fixed",
+                  rate1000kWh: 0.119,
+                  monthlyFee: 9.95,
+                  earlyTerminationFee: 150,
+                  renewable: false
+                },
+                {
+                  planName: "Green Choice 24",
+                  rep: "Green Mountain Energy",
+                  termMonths: 24,
+                  rateType: "fixed",
+                  rate1000kWh: 0.125,
+                  monthlyFee: 0,
+                  earlyTerminationFee: 200,
+                  renewable: true
+                }
+              ],
+              dataRefreshedAt: "2025-02-17T12:00:00Z"
+            }
+          },
+          {
+            slug: 'home-usage-estimator',
+            title: 'Home Usage Estimator',
+            subtitle: 'AI-based electricity usage estimation for ERCOT',
+            description: 'The Home Usage Estimator API generates monthly and annual electricity usage estimates using self-learning AI and proprietary algorithms. It analyzes factors such as location, home size, and related attributes to forecast usage without requiring historical billing data or meter access.\n\nDesigned for ERCOT use cases, the API provides reliable usage estimates for scenarios where actual consumption data is unavailable, including new movers and first-time enrollments.',
+            whySubscribe: [
+              'Estimate usage without billing history for new movers or incomplete data scenarios',
+              'Provide immediate usage estimates to support plan presentation and comparisons',
+              'Improve estimation accuracy over time with self-learning forecasting models'
+            ],
+            exampleRequest: `curl -X POST https://api.eiqdigital.com/v1/usage-estimator \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "zip": "78701",
+    "squareFeet": 1800,
+    "bedrooms": 3,
+    "occupants": 4,
+    "homeType": "single-family"
+  }'`,
+            exampleResponse: {
+              success: true,
+              estimate: {
+                annualKwh: 13500,
+                averageMonthlyKwh: 1125,
+                monthlyEstimates: [
+                  { month: 1, kwh: 950 }, { month: 2, kwh: 900 }, { month: 3, kwh: 1000 },
+                  { month: 4, kwh: 1050 }, { month: 5, kwh: 1200 }, { month: 6, kwh: 1400 },
+                  { month: 7, kwh: 1500 }, { month: 8, kwh: 1450 }, { month: 9, kwh: 1300 },
+                  { month: 10, kwh: 1100 }, { month: 11, kwh: 950 }, { month: 12, kwh: 900 }
+                ]
+              },
+              confidenceScore: 0.87
+            }
+          },
+          {
+            slug: 'load-profile-matcher',
+            title: 'Load Profile Matcher',
+            subtitle: 'AI-based usage-driven energy plan cost calculation',
+            description: 'The Load Profile Matcher API uses advanced AI to evaluate residential energy plans against a household\'s unique electricity usage profile. It calculates the true, personalized cost of each plan by interpreting and normalizing all pricing components, regardless of plan structure.\n\nThe API reads and parses complex rate designs (including fixed, tiered, time-of-use (TOU), bill credits, and promotional offers) eliminating the need for standard usage walls such as 500, 1,000, or 2,000 kWh. This enables accurate, usage-based plan ranking and comparison.\n\nDesigned for personalized shopping and pricing workflows, the Load Profile Matcher API simplifies plan selection by identifying the lowest-cost option based on actual consumption patterns, improving decision accuracy, conversion, and customer satisfaction.',
+            whySubscribe: [
+              'Calculate true plan costs based on a customer\'s unique usage profile',
+              'Compare plans accurately across all rate structures, including tiered and TOU',
+              'Eliminate reliance on standard usage walls for plan comparison',
+              'Enable personalized plan ranking and simpler, more confident decision-making'
+            ],
+            exampleRequest: `curl -X POST https://api.eiqdigital.com/v1/load-profile-matcher \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "usageProfile": {
+      "monthlyKwh": [950, 900, 1000, 1050, 1200, 1400, 1500, 1450, 1300, 1100, 950, 900],
+      "hourlyPattern": "residential_standard"
+    },
+    "plans": [
+      { "planId": "plan_001", "planName": "Energy Saver 12", "rateStructure": "fixed", "rate": 0.119, "monthlyFee": 9.95 },
+      { "planId": "plan_002", "planName": "Free Nights 12", "rateStructure": "tou", "dayRate": 0.145, "nightRate": 0.00, "monthlyFee": 0 }
+    ]
+  }'`,
+            exampleResponse: {
+              success: true,
+              rankedPlans: [
+                { planId: "plan_001", planName: "Energy Saver 12", estimatedAnnualCost: 1726.45, estimatedMonthlyCost: 143.87, rank: 1, savings: 0 },
+                { planId: "plan_002", planName: "Free Nights 12", estimatedAnnualCost: 1842.30, estimatedMonthlyCost: 153.53, rank: 2, savings: -115.85 }
+              ],
+              recommendedPlan: "plan_001",
+              totalUsageKwh: 13300
+            }
+          }
+        ];
+
+        const mockStorage = {
+          users: [{ id: '1', email: 'demo@eiqdigital.com', password: 'demo2025', name: 'Demo User', role: 'client' }],
+          apiKeys: [
+            { id: '1', userId: '1', apiName: 'esiid-lookup', key: 'eiq_sk_test_4f3a2b1c9d8e7f6a5b4c3d2e1f0a9b8c', environment: 'sandbox', isActive: true },
+            { id: '2', userId: '1', apiName: 'bill-reader', key: 'eiq_sk_test_9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d', environment: 'sandbox', isActive: true }
+          ],
+          approvedApis: [
+            { userId: '1', apiName: 'esiid-lookup' },
+            { userId: '1', apiName: 'bill-reader' }
+          ]
+        };
+
+        function EIQApiPortal() {
+          const [currentView, setCurrentView] = useState('docs');
+          const [selectedApi, setSelectedApi] = useState('esiid-lookup');
+          const [user, setUser] = useState(null);
+          const [loginEmail, setLoginEmail] = useState('');
+          const [loginPassword, setLoginPassword] = useState('');
+          const [loginError, setLoginError] = useState('');
+          const [accessSubmitted, setAccessSubmitted] = useState(false);
+          const [copiedKey, setCopiedKey] = useState(null);
+          const [selectedApisForRequest, setSelectedApisForRequest] = useState([]);
+          const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
+
+          const currentApiDoc = API_DOCS.find(api => api.slug === selectedApi);
+          const userApiKeys = user ? mockStorage.apiKeys.filter(k => k.userId === user.id) : [];
+          const userApprovedApis = user ? mockStorage.approvedApis.filter(a => a.userId === user.id) : [];
+
+          const handleLogin = (e) => {
+            e.preventDefault();
+            const foundUser = mockStorage.users.find(u => 
+              u.email.toLowerCase() === loginEmail.toLowerCase().trim() && 
+              u.password === loginPassword.trim()
+            );
+            if (foundUser) {
+              setUser(foundUser);
+              setCurrentView('dashboard');
+              setLoginEmail('');
+              setLoginPassword('');
+              setLoginError('');
+            } else {
+              setLoginError('Invalid credentials. Use: demo@eiqdigital.com / demo2025');
+            }
+          };
+
+          const toggleApiSelection = (apiSlug) => {
+            setSelectedApisForRequest(prev =>
+              prev.includes(apiSlug) ? prev.filter(slug => slug !== apiSlug) : [...prev, apiSlug]
+            );
+          };
+
+          const toggleSelectAll = () => {
+            if (selectedApisForRequest.length === ALL_APIS.length) {
+              setSelectedApisForRequest([]);
+            } else {
+              setSelectedApisForRequest(ALL_APIS.map(api => api.slug));
+            }
+          };
+
+          const copyToClipboard = (text, id) => {
+            navigator.clipboard.writeText(text);
+            setCopiedKey(id);
+            setTimeout(() => setCopiedKey(null), 2000);
+          };
+
+          return (
+            <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #0d3a4a 0%, #1a4d5e 50%, #0d3a4a 100%)', position: 'relative' }}>
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.1, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(100, 200, 255, 0.1) 2px, rgba(100, 200, 255, 0.1) 4px)' }} />
+
+              <header style={{ position: 'relative', zIndex: 10, padding: '1.5rem 2rem' }}>
+                <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+                  <div style={{ border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '50px', padding: '0.75rem 2rem', backgroundColor: 'rgba(13, 58, 74, 0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
+                      <h1 style={{ color: 'white', fontSize: '1.25rem', fontWeight: 'bold' }}>EIQdigital</h1>
+                      <nav style={{ display: 'flex', gap: '2rem' }}>
+                        {!user ? (
+                          <>
+                            <button onClick={() => setCurrentView('docs')} style={{ background: 'none', border: 'none', color: currentView === 'docs' ? 'white' : 'rgba(255,255,255,0.8)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: currentView === 'docs' ? '500' : 'normal' }}>APIs</button>
+                            <button onClick={() => { setCurrentView('request-access'); setSelectedApisForRequest([]); }} style={{ background: 'none', border: 'none', color: currentView === 'request-access' ? 'white' : 'rgba(255,255,255,0.8)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: currentView === 'request-access' ? '500' : 'normal' }}>Request API Access</button>
+                            <button onClick={() => setCurrentView('contact')} style={{ background: 'none', border: 'none', color: currentView === 'contact' ? 'white' : 'rgba(255,255,255,0.8)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: currentView === 'contact' ? '500' : 'normal' }}>Contact Us</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => setCurrentView('dashboard')} style={{ background: 'none', border: 'none', color: currentView.startsWith('dashboard') ? 'white' : 'rgba(255,255,255,0.8)', fontSize: '0.875rem', cursor: 'pointer' }}>Dashboard</button>
+                            <button onClick={() => setCurrentView('docs')} style={{ background: 'none', border: 'none', color: currentView === 'docs' ? 'white' : 'rgba(255,255,255,0.8)', fontSize: '0.875rem', cursor: 'pointer' }}>APIs</button>
+                          </>
+                        )}
+                      </nav>
+                    </div>
+                    <div>
+                      {!user ? (
+                        <button onClick={() => setCurrentView('login')} style={{ padding: '0.5rem 1.25rem', color: 'white', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.875rem' }}>Login</button>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '50px', backgroundColor: 'rgba(34, 211, 238, 0.2)', border: '1px solid rgba(34, 211, 238, 0.4)' }}>
+                            <div style={{ height: '0.5rem', width: '0.5rem', borderRadius: '50%', backgroundColor: '#4ade80' }}></div>
+                            <span style={{ fontSize: '0.875rem', color: 'white', fontWeight: '500' }}>{user.name}</span>
+                          </div>
+                          <button onClick={() => { setUser(null); setCurrentView('docs'); }} style={{ padding: '0.5rem 1rem', color: 'white', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.3)', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i data-lucide="log-out" style={{ width: '1rem', height: '1rem' }}></i> Logout
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <div style={{ flex: 1, display: 'flex', position: 'relative', zIndex: 10 }}>
+                {currentView === 'docs' && (
+                  <nav style={{ width: '16rem', padding: '1.5rem', backgroundColor: 'rgba(13, 58, 74, 0.4)', backdropFilter: 'blur(10px)', borderRight: '1px solid rgba(255, 255, 255, 0.1)', overflowY: 'auto' }}>
+                    <h2 style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '1rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available APIs</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {API_DOCS.map(api => (
+                        <button key={api.slug} onClick={() => setSelectedApi(api.slug)} style={{ width: '100%', textAlign: 'left', padding: '0.625rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: selectedApi === api.slug ? 'rgba(255,255,255,0.2)' : 'transparent', color: selectedApi === api.slug ? 'white' : 'rgba(255,255,255,0.7)', border: selectedApi === api.slug ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent', fontWeight: selectedApi === api.slug ? '500' : 'normal' }}>
+                          {api.title}
+                        </button>
+                      ))}
+                    </div>
+                  </nav>
+                )}
+
+                {currentView.startsWith('dashboard') && user && (
+                  <nav style={{ width: '16rem', padding: '1.5rem', backgroundColor: 'rgba(13, 58, 74, 0.4)', backdropFilter: 'blur(10px)', borderRight: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                    <h2 style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '1rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Dashboard</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {[
+                        { id: 'dashboard', label: 'Overview', icon: 'home' },
+                        { id: 'dashboard-keys', label: 'API Keys', icon: 'key' },
+                        { id: 'dashboard-postman', label: 'Postman Docs', icon: 'file-code' },
+                        { id: 'dashboard-usage', label: 'Usage Logs', icon: 'bar-chart-3' }
+                      ].map(({ id, label, icon }) => (
+                        <button key={id} onClick={() => setCurrentView(id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', cursor: 'pointer', backgroundColor: currentView === id ? 'rgba(255,255,255,0.2)' : 'transparent', color: currentView === id ? 'white' : 'rgba(255,255,255,0.7)', border: currentView === id ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent' }}>
+                          <i data-lucide={icon} style={{ width: '1rem', height: '1rem' }}></i> {label}
+                        </button>
+                      ))}
+                    </div>
+                  </nav>
+                )}
+
+                <main style={{ flex: 1, overflowY: 'auto' }}>
+                  {currentView === 'docs' && currentApiDoc && (
+                    <div style={{ maxWidth: '64rem', margin: '0 auto', padding: '3rem 2rem' }}>
+                      <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>{currentApiDoc.title}</h1>
+                      <h2 style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.7)', marginBottom: '1.5rem', fontWeight: '500' }}>{currentApiDoc.subtitle}</h2>
+                      <p style={{ fontSize: '1.125rem', color: 'rgba(255,255,255,0.8)', marginBottom: '3rem', lineHeight: '1.75', whiteSpace: 'pre-line' }}>{currentApiDoc.description}</p>
+
+                      <section style={{ marginBottom: '3rem' }}>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>Why Subscribe?</h3>
+                        <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {currentApiDoc.whySubscribe.map((item, i) => (
+                            <li key={i} style={{ display: 'flex', gap: '0.75rem' }}>
+                              <span style={{ color: '#22d3ee', marginTop: '0.375rem', fontWeight: 'bold' }}>•</span>
+                              <span style={{ color: 'rgba(255,255,255,0.8)' }}>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+
+                      <section style={{ marginBottom: '3rem' }}>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>Example Request</h3>
+                        <pre style={{ padding: '1.5rem', borderRadius: '0.5rem', overflow: 'auto', fontSize: '0.875rem', backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#e0e0e0' }}>{currentApiDoc.exampleRequest}</pre>
+                      </section>
+
+                      <section style={{ marginBottom: '3rem' }}>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>Example Response</h3>
+                        <pre style={{ padding: '1.5rem', borderRadius: '0.5rem', overflow: 'auto', fontSize: '0.875rem', backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#e0e0e0' }}>{JSON.stringify(currentApiDoc.exampleResponse, null, 2)}</pre>
+                      </section>
+
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
+                        <button onClick={() => { setSelectedApisForRequest([currentApiDoc.slug]); setCurrentView('request-access'); }} style={{ padding: '0.75rem 2rem', color: 'white', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '1rem', fontWeight: '500' }}>
+                          Request API Access
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentView === 'request-access' && !accessSubmitted && (
+                    <div style={{ maxWidth: '48rem', margin: '0 auto', padding: '3rem 2rem' }}>
+                      <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>Request API Access</h1>
+                      <p style={{ fontSize: '1.125rem', color: 'rgba(255,255,255,0.7)', marginBottom: '2.5rem' }}>Fill out the form below to request access to our APIs.</p>
+
+                      <form onSubmit={(e) => { e.preventDefault(); if (selectedApisForRequest.length > 0) setAccessSubmitted(true); else alert('Select at least one API'); }} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '2rem', borderRadius: '0.5rem', backgroundColor: 'rgba(13, 58, 74, 0.4)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>First Name *</label>
+                            <input type="text" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Last Name *</label>
+                            <input type="text" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Company *</label>
+                          <input type="text" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Email *</label>
+                          <input type="email" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>Select APIs *</label>
+                            <button type="button" onClick={toggleSelectAll} style={{ padding: '0.375rem 0.875rem', fontSize: '0.75rem', fontWeight: '500', color: 'white', backgroundColor: 'rgba(34, 211, 238, 0.2)', border: '1px solid rgba(34, 211, 238, 0.4)', borderRadius: '0.375rem', cursor: 'pointer' }}>
+                              {selectedApisForRequest.length === ALL_APIS.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                          </div>
+                          <div style={{ padding: '1rem', borderRadius: '0.375rem', backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.2)', maxHeight: '20rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {ALL_APIS.map(api => (
+                              <div key={api.slug} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem', borderRadius: '0.25rem' }}>
+                                <input type="checkbox" id={`api-${api.slug}`} checked={selectedApisForRequest.includes(api.slug)} onChange={() => toggleApiSelection(api.slug)} style={{ marginTop: '0.25rem', accentColor: '#22d3ee' }} />
+                                <label htmlFor={`api-${api.slug}`} style={{ flex: 1, cursor: 'pointer' }}>
+                                  <div style={{ fontWeight: '500', color: 'white' }}>{api.title}</div>
+                                  <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)' }}>{api.subtitle}</div>
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                          {selectedApisForRequest.length > 0 && <p style={{ fontSize: '0.875rem', color: '#67e8f9', marginTop: '0.5rem' }}>{selectedApisForRequest.length} API(s) selected</p>}
+                        </div>
+                        <button type="submit" style={{ width: '100%', padding: '0.75rem 1.5rem', borderRadius: '50px', fontWeight: '500', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent', color: 'white' }}>Submit Request</button>
+                      </form>
+                    </div>
+                  )}
+
+                  {currentView === 'request-access' && accessSubmitted && (
+                    <div style={{ maxWidth: '36rem', margin: '0 auto', padding: '3rem 2rem' }}>
+                      <div style={{ borderRadius: '0.5rem', padding: '2rem', backgroundColor: 'rgba(13, 58, 74, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                          <i data-lucide="check-circle" style={{ width: '3rem', height: '3rem', color: '#4ade80' }}></i>
+                          <div>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.25rem' }}>Request Submitted</h2>
+                            <p style={{ color: 'rgba(255,255,255,0.7)' }}>We'll review your request and get back to you soon</p>
+                          </div>
+                        </div>
+                        <button onClick={() => { setAccessSubmitted(false); setSelectedApisForRequest([]); }} style={{ padding: '0.75rem 1.5rem', color: 'white', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: '500' }}>Submit Another Request</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentView === 'contact' && !contactFormSubmitted && (
+                    <div style={{ maxWidth: '48rem', margin: '0 auto', padding: '3rem 2rem' }}>
+                      <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>Contact Us</h1>
+                      <p style={{ fontSize: '1.125rem', color: 'rgba(255,255,255,0.7)', marginBottom: '2.5rem' }}>Have questions about our APIs? Get in touch with our team.</p>
+
+                      <form onSubmit={(e) => { e.preventDefault(); setContactFormSubmitted(true); }} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '2rem', borderRadius: '0.5rem', backgroundColor: 'rgba(13, 58, 74, 0.4)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Name *</label>
+                            <input type="text" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Email *</label>
+                            <input type="email" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Subject *</label>
+                          <input type="text" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Message *</label>
+                          <textarea required rows="6" style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', resize: 'vertical' }}></textarea>
+                        </div>
+                        <button type="submit" style={{ padding: '0.75rem 1.5rem', color: 'white', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: '500' }}>Send Message</button>
+                      </form>
+                    </div>
+                  )}
+
+                  {currentView === 'contact' && contactFormSubmitted && (
+                    <div style={{ maxWidth: '36rem', margin: '0 auto', padding: '3rem 2rem' }}>
+                      <div style={{ borderRadius: '0.5rem', padding: '2rem', textAlign: 'center', backgroundColor: 'rgba(13, 58, 74, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                        <i data-lucide="check-circle" style={{ width: '4rem', height: '4rem', color: '#4ade80', margin: '0 auto 1rem' }}></i>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>Message Sent Successfully</h2>
+                        <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '1.5rem' }}>Thank you for contacting us. We'll get back to you within 24 hours.</p>
+                        <button onClick={() => setContactFormSubmitted(false)} style={{ padding: '0.75rem 1.5rem', color: 'white', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: '500' }}>Send Another Message</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentView === 'login' && !user && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '2rem' }}>
+                      <div style={{ width: '100%', maxWidth: '28rem' }}>
+                        <div style={{ borderRadius: '0.5rem', padding: '2rem', backgroundColor: 'rgba(13, 58, 74, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>Sign In</h2>
+                            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>Access your API dashboard</p>
+                          </div>
+                          
+                          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {loginError && (
+                              <div style={{ padding: '1rem', borderRadius: '0.375rem', backgroundColor: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)', display: 'flex', gap: '0.75rem' }}>
+                                <i data-lucide="alert-circle" style={{ width: '1.25rem', height: '1.25rem', color: '#fca5a5', flexShrink: 0 }}></i>
+                                <p style={{ fontSize: '0.875rem', color: '#fca5a5' }}>{loginError}</p>
+                              </div>
+                            )}
+
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Email</label>
+                              <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="demo@eiqdigital.com" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', color: 'rgba(255,255,255,0.9)' }}>Password</label>
+                              <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="demo2025" required style={{ width: '100%', padding: '0.625rem 1rem', borderRadius: '0.375rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white' }} />
+                            </div>
+
+                            <button type="submit" style={{ width: '100%', padding: '0.75rem 1rem', color: 'white', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: '500' }}>Sign In</button>
+
+                            <div style={{ textAlign: 'center', fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                              <p style={{ marginBottom: '0.75rem', fontWeight: '500', color: 'white' }}>Demo Credentials:</p>
+                              <div style={{ padding: '1rem', borderRadius: '0.375rem', backgroundColor: 'rgba(34, 211, 238, 0.15)', border: '1px solid rgba(34, 211, 238, 0.3)' }}>
+                                <p style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'white', fontWeight: 'bold' }}>demo@eiqdigital.com</p>
+                                <p style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'white', fontWeight: 'bold' }}>demo2025</p>
+                              </div>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {user && currentView === 'dashboard' && (
+                    <div style={{ padding: '2rem', backgroundColor: 'white', minHeight: '100vh' }}>
+                      <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#111827' }}>Welcome, {user.name}!</h1>
+                      <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Manage your API access and monitor usage</p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+                          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem', textTransform: 'uppercase' }}>APPROVED APIS</p>
+                          <p style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#111827' }}>{userApprovedApis.length}</p>
+                        </div>
+                        <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+                          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem', textTransform: 'uppercase' }}>ACTIVE KEYS</p>
+                          <p style={{ fontSize: '2.25rem', fontWeight: 'bold', color: '#111827' }}>{userApiKeys.filter(k => k.isActive).length}</p>
+                        </div>
+                        <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+                          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem', textTransform: 'uppercase' }}>ENVIRONMENTS</p>
+                          <p style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginTop: '0.5rem' }}>
+                            {userApiKeys.filter(k => k.environment === 'sandbox').length} Sandbox / {userApiKeys.filter(k => k.environment === 'production').length} Production
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
+                        <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>Your Approved APIs</h2>
+                        </div>
+                        <div style={{ padding: '1.5rem' }}>
+                          {userApprovedApis.map((api, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', marginBottom: '0.75rem' }}>
+                              <h3 style={{ fontWeight: '500', color: '#111827' }}>{api.apiName}</h3>
+                              <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '500' }}>Active</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {user && currentView === 'dashboard-keys' && (
+                    <div style={{ padding: '2rem', backgroundColor: 'white', minHeight: '100vh' }}>
+                      <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#111827' }}>API Keys</h1>
+                      <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Manage your API authentication keys</p>
+
+                      <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
+                        <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>Your API Keys</h2>
+                        </div>
+                        <div style={{ padding: '1.5rem' }}>
+                          {userApiKeys.map(key => (
+                            <div key={key.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', marginBottom: '0.75rem' }}>
+                              <div style={{ flex: 1 }}>
+                                <p style={{ fontWeight: '500', color: '#111827', marginBottom: '0.25rem' }}>{key.apiName}</p>
+                                <code style={{ fontSize: '0.75rem', color: '#6b7280' }}>{key.key.slice(0, 20)}...{key.key.slice(-8)}</code>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '500', backgroundColor: key.environment === 'production' ? '#dbeafe' : '#f3f4f6', color: key.environment === 'production' ? '#1e40af' : '#374151' }}>{key.environment}</span>
+                                <button onClick={() => copyToClipboard(key.key, key.id)} style={{ padding: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280' }}>
+                                  <i data-lucide="copy" style={{ width: '1rem', height: '1rem' }}></i>
+                                </button>
+                                {copiedKey === key.id && <span style={{ fontSize: '0.75rem', color: '#059669' }}>Copied!</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {user && currentView === 'dashboard-postman' && (
+                    <div style={{ padding: '2rem', backgroundColor: 'white', minHeight: '100vh' }}>
+                      <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#111827' }}>Postman Collections</h1>
+                      <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Download Postman collections</p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {userApprovedApis.map((api, i) => (
+                          <div key={i} style={{ padding: '1.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>{api.apiName}</h3>
+                            <button style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: 'white', fontSize: '0.875rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <i data-lucide="file-code" style={{ width: '1rem', height: '1rem' }}></i> Download Collection
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {user && currentView === 'dashboard-usage' && (
+                    <div style={{ padding: '2rem', backgroundColor: 'white', minHeight: '100vh' }}>
+                      <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#111827' }}>Usage Logs</h1>
+                      <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Monitor your API usage</p>
+
+                      <div style={{ padding: '3rem', textAlign: 'center', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
+                        <i data-lucide="bar-chart-3" style={{ width: '4rem', height: '4rem', color: '#d1d5db', margin: '0 auto 1rem' }}></i>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#111827' }}>Usage Analytics Coming Soon</h3>
+                        <p style={{ color: '#6b7280' }}>Detailed logs will be available here</p>
+                      </div>
+                    </div>
+                  )}
+                </main>
+              </div>
+
+              <footer style={{ position: 'relative', zIndex: 10, color: 'white', padding: '1.5rem', backgroundColor: 'rgba(13, 58, 74, 0.6)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <div style={{ maxWidth: '1280px', margin: '0 auto', textAlign: 'center', fontSize: '0.875rem' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.7)' }}>2025 © EIQdigital. All Rights Reserved.</p>
+                </div>
+              </footer>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<EIQApiPortal />);
+
+        setTimeout(() => {
+          if (window.lucide) {
+            window.lucide.createIcons();
+          }
+        }, 100);
+    </script>
+</body>
+</html>
